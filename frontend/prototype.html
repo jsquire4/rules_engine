@@ -1,0 +1,1415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rules Engine — Governance Console</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   NEUMORPHIC DESIGN TOKENS
+   ============================================================ */
+:root {
+  --font-sans: 'IBM Plex Sans', -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', monospace;
+
+  --bg: #d0d5dc;
+  --surface: #e2e6ec;
+  --surface-high: #eaeef3;
+
+  --shadow-dark: #a8aeb8;
+  --shadow-light: #f0f2f5;
+  --shadow-dark-surface: #c0c5cc;
+  --shadow-light-surface: #f4f6f8;
+
+  --text-primary: #1e2734;
+  --text-secondary: #3d4a5c;
+  --text-tertiary: #5a677a;
+  --text-muted: #808d9f;
+
+  --accent: #1b365d;
+  --accent-light: #2a4f82;
+  --accent-surface: rgba(27, 54, 93, 0.1);
+
+  --permit: #16a34a;
+  --permit-surface: rgba(22, 163, 74, 0.1);
+  --deny: #dc2626;
+  --deny-surface: rgba(220, 38, 38, 0.08);
+
+  --info: #2563eb;
+  --purple: #6d28d9;
+  --cyan: #0891b2;
+  --orange: #c2410c;
+
+  --neu-raised: 6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light);
+  --neu-raised-sm: 3px 3px 7px var(--shadow-dark), -3px -3px 7px var(--shadow-light);
+  --neu-inset: inset 3px 3px 7px var(--shadow-dark), inset -3px -3px 7px var(--shadow-light);
+  --neu-inset-sm: inset 2px 2px 5px var(--shadow-dark), inset -2px -2px 5px var(--shadow-light);
+
+  --neu-surface-raised: 4px 4px 8px var(--shadow-dark-surface), -4px -4px 8px var(--shadow-light-surface);
+  --neu-surface-raised-sm: 2px 2px 5px var(--shadow-dark-surface), -2px -2px 5px var(--shadow-light-surface);
+  --neu-surface-inset: inset 3px 3px 6px var(--shadow-dark-surface), inset -3px -3px 6px var(--shadow-light-surface);
+  --neu-surface-inset-sm: inset 2px 2px 4px var(--shadow-dark-surface), inset -2px -2px 4px var(--shadow-light-surface);
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+}
+
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--shadow-dark); border-radius: 3px; }
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+.app { display: flex; flex-direction: column; height: 100vh; }
+
+.header {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  background: var(--surface);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  flex-shrink: 0;
+  z-index: 10;
+}
+.header-logo { display: flex; align-items: center; gap: 12px; }
+.header-logo-icon {
+  width: 32px; height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--neu-surface-raised-sm);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent);
+}
+.header-title { font-size: 17px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.3px; }
+.header-sep { width: 1px; height: 24px; background: var(--shadow-dark); margin: 0 20px; opacity: 0.4; }
+.header-org { font-size: 13px; color: var(--text-muted); }
+.header-org span { color: var(--text-secondary); font-weight: 500; }
+.header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.header-avatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: var(--neu-surface-raised-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600; color: white;
+}
+
+.body { display: flex; flex: 1; overflow: hidden; }
+
+.sidebar {
+  width: 260px;
+  background: var(--surface);
+  padding: 16px 12px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border-right: 1px solid rgba(0,0,0,0.04);
+}
+.sidebar-section-label {
+  font-size: 10px; font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  padding: 0 8px;
+  margin-bottom: 4px;
+}
+
+.tree-node {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  transition: all 0.15s;
+}
+.tree-node:hover { color: var(--text-secondary); background: rgba(0,0,0,0.03); }
+.tree-node.selected {
+  background: var(--surface);
+  box-shadow: var(--neu-surface-inset-sm);
+  color: var(--accent);
+  font-weight: 500;
+}
+.tree-toggle { width: 14px; text-align: center; font-size: 10px; color: var(--text-muted); cursor: pointer; flex-shrink: 0; }
+.tree-icon { flex-shrink: 0; }
+.tree-label { flex: 1; }
+.tree-badge {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--accent);
+  background: var(--accent-surface);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+.tree-children { margin-left: 16px; }
+
+.surface-tabs {
+  display: flex; gap: 6px;
+  padding: 6px;
+  background: var(--bg);
+  box-shadow: var(--neu-raised);
+  border-radius: var(--radius-lg);
+  margin-bottom: 20px;
+}
+.surface-tab {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  font-size: 12px; font-weight: 600;
+  color: var(--text-tertiary);
+  background: var(--bg);
+  border: none;
+  cursor: pointer;
+  transition: box-shadow 0.12s;
+  text-align: center;
+  box-shadow: var(--neu-raised-sm);
+}
+.surface-tab:hover { color: var(--text-secondary); }
+.surface-tab:active { box-shadow: var(--neu-inset-sm); }
+.surface-tab.active {
+  box-shadow: var(--neu-inset);
+  color: var(--accent);
+}
+
+.main {
+  flex: 1;
+  padding: 20px 24px;
+  overflow: auto;
+  background: var(--bg);
+}
+
+/* ============================================================
+   NEUMORPHIC COMPONENTS
+   ============================================================ */
+.neu-panel {
+  background: var(--surface);
+  box-shadow: var(--neu-raised);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  overflow: auto;
+}
+.panel-header {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 16px; color: var(--text-tertiary);
+}
+.panel-title {
+  font-size: 12px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.8px;
+  color: var(--text-muted);
+}
+
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--font-mono); font-size: 11px;
+  padding: 2px 8px; border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+.badge-permit { background: var(--permit-surface); color: var(--permit); font-weight: 500; }
+.badge-deny { background: var(--deny-surface); color: var(--deny); font-weight: 500; }
+.badge-accent { background: var(--accent-surface); color: var(--accent); font-weight: 500; }
+.badge-muted { background: var(--surface); box-shadow: var(--neu-surface-inset-sm); color: var(--text-muted); font-size: 10px; }
+.badge-org { color: var(--purple); background: rgba(109,40,217,0.08); font-weight: 500; }
+.badge-dept { color: var(--info); background: rgba(37,99,235,0.08); font-weight: 500; }
+.badge-team { color: var(--cyan); background: rgba(8,145,178,0.08); font-weight: 500; }
+.badge-agent { color: var(--orange); background: rgba(194,65,12,0.08); font-weight: 500; }
+
+.neu-input {
+  width: 100%;
+  background: var(--surface);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-family: var(--font-mono); font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+  box-shadow: var(--neu-surface-inset);
+  transition: box-shadow 0.15s;
+}
+.neu-input:focus { box-shadow: var(--neu-surface-inset), 0 0 0 2px rgba(27,54,93,0.15); }
+.neu-input.error { box-shadow: var(--neu-surface-inset), 0 0 0 2px rgba(220,38,38,0.25); }
+
+.neu-select {
+  background: var(--surface);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 10px 32px 10px 14px;
+  font-family: var(--font-mono); font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+  box-shadow: var(--neu-surface-inset);
+  cursor: pointer;
+  -webkit-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23808d9f' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+.neu-select:focus { box-shadow: var(--neu-surface-inset), 0 0 0 2px rgba(27,54,93,0.15); }
+
+.neu-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border: none; border-radius: var(--radius-md);
+  font-family: var(--font-sans); font-size: 13px; font-weight: 600;
+  cursor: pointer; padding: 10px 20px;
+  transition: box-shadow 0.1s, transform 0.1s;
+}
+.neu-btn-primary {
+  background: var(--accent);
+  color: white;
+  box-shadow: 4px 4px 8px var(--shadow-dark-surface), -4px -4px 8px var(--shadow-light-surface);
+}
+.neu-btn-primary:hover { box-shadow: 5px 5px 12px var(--shadow-dark-surface), -5px -5px 12px var(--shadow-light-surface); }
+.neu-btn-primary:active {
+  box-shadow: inset 2px 2px 4px rgba(0,0,0,0.2), inset -1px -1px 3px rgba(255,255,255,0.1);
+  transform: translateY(1px);
+}
+.neu-btn-primary:disabled { background: var(--shadow-dark); color: var(--text-muted); cursor: not-allowed; box-shadow: none; }
+
+.neu-btn-ghost {
+  background: var(--surface);
+  color: var(--text-tertiary);
+  box-shadow: var(--neu-surface-raised-sm);
+}
+.neu-btn-ghost:hover { color: var(--text-secondary); box-shadow: var(--neu-surface-raised); }
+.neu-btn-ghost:active { box-shadow: var(--neu-surface-inset-sm); transform: translateY(1px); }
+.neu-btn-ghost.active { box-shadow: var(--neu-surface-inset-sm); color: var(--accent); }
+
+.neu-toggle {
+  width: 48px; height: 26px;
+  border-radius: 13px;
+  position: relative;
+  cursor: pointer;
+  background: var(--surface);
+  box-shadow: var(--neu-surface-inset);
+  transition: background 0.2s;
+}
+.neu-toggle.on {
+  background: var(--accent);
+  box-shadow: inset 2px 2px 5px rgba(0,0,0,0.2), inset -2px -2px 5px rgba(255,255,255,0.05);
+}
+.neu-toggle-thumb {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--surface-high);
+  position: absolute; top: 2px;
+  box-shadow: 2px 2px 5px var(--shadow-dark-surface), -1px -1px 3px var(--shadow-light-surface);
+  transition: left 0.2s cubic-bezier(0.4, 1.3, 0.6, 1);
+}
+.neu-toggle.on .neu-toggle-thumb { background: white; box-shadow: 1px 1px 3px rgba(0,0,0,0.2); }
+
+.neu-checkbox {
+  width: 22px; height: 22px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--neu-surface-inset-sm);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all 0.12s;
+  flex-shrink: 0;
+}
+.neu-checkbox.checked {
+  background: var(--accent);
+  box-shadow: inset 2px 2px 4px rgba(0,0,0,0.15), inset -1px -1px 3px rgba(255,255,255,0.05);
+  color: white;
+}
+.neu-checkbox.unchecked:hover { box-shadow: var(--neu-surface-inset); }
+.neu-checkbox.disabled { opacity: 0.4; cursor: not-allowed; }
+
+.neu-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 7px 16px; border-radius: var(--radius-md);
+  font-size: 13px; border: none; cursor: pointer;
+  transition: box-shadow 0.1s, transform 0.1s;
+  font-family: var(--font-sans);
+  background: var(--surface);
+}
+.neu-chip.selected { box-shadow: var(--neu-surface-inset); color: var(--accent); font-weight: 500; }
+.neu-chip.unselected { box-shadow: var(--neu-surface-raised-sm); color: var(--text-tertiary); }
+.neu-chip.unselected:hover { color: var(--text-secondary); }
+.neu-chip.unselected:active { box-shadow: var(--neu-surface-inset-sm); transform: translateY(1px); }
+.neu-chip.disabled { color: var(--text-muted); cursor: not-allowed; box-shadow: none; text-decoration: line-through; background: var(--bg); }
+
+input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  height: 8px; border-radius: 4px;
+  background: var(--surface);
+  box-shadow: var(--neu-surface-inset-sm);
+  outline: none; cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--surface-high);
+  border: none;
+  box-shadow: 3px 3px 7px var(--shadow-dark-surface), -3px -3px 7px var(--shadow-light-surface);
+  cursor: grab;
+  transition: box-shadow 0.1s;
+}
+input[type="range"]::-webkit-slider-thumb:active { cursor: grabbing; box-shadow: var(--neu-surface-inset-sm); }
+input[type="range"]::-moz-range-thumb {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--surface-high);
+  border: none;
+  box-shadow: 3px 3px 7px var(--shadow-dark-surface), -3px -3px 7px var(--shadow-light-surface);
+  cursor: grab;
+}
+
+/* ============================================================
+   UTILITY
+   ============================================================ */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; height: 100%; }
+.flex-col { display: flex; flex-direction: column; }
+.space-y > * + * { margin-top: 16px; }
+.space-y-sm > * + * { margin-top: 10px; }
+.field-label { display: block; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+.field-hint { font-size: 11px; color: var(--text-muted); }
+.section-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.section-divider { margin-top: 16px; padding-top: 12px; }
+.error-text { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--deny); font-weight: 500; margin-top: 8px; }
+
+/* ============================================================
+   ENGLISH SUMMARY
+   ============================================================ */
+.summary-card {
+  background: var(--surface);
+  box-shadow: var(--neu-raised);
+  border-radius: var(--radius-lg);
+  padding: 16px 16px 16px 19px;
+  border-left: 4px solid var(--accent);
+}
+.summary-title { font-size: 10px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.summary-text { font-size: 13px; line-height: 1.7; color: var(--text-secondary); }
+.summary-text li { margin-bottom: 4px; list-style: none; padding-left: 16px; position: relative; }
+.summary-text li::before { content: ''; position: absolute; left: 0; top: 8px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: 0.4; }
+.summary-text .deny-rule { color: var(--deny); }
+.summary-text .constraint { font-family: var(--font-mono); font-size: 12px; color: var(--accent); font-weight: 500; }
+
+/* ============================================================
+   HIERARCHY LEVELS
+   ============================================================ */
+.level-border { border-left: 3px solid; padding-left: 16px; }
+.level-border.org { border-color: rgba(109,40,217,0.4); }
+.level-border.dept { border-color: rgba(37,99,235,0.4); }
+.level-border.team { border-color: rgba(8,145,178,0.4); }
+
+.constraint-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.constraint-label { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.constraint-value { font-family: var(--font-mono); font-size: 13px; color: var(--text-secondary); }
+.constraint-value.warn { color: var(--deny); font-weight: 500; }
+.constraint-value.accent { color: var(--accent); }
+
+.ceiling-box { background: var(--surface); box-shadow: var(--neu-surface-inset); border-radius: var(--radius-md); padding: 14px; margin-top: 16px; }
+.ceiling-title { font-size: 11px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+.ceiling-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.ceiling-item-label { font-size: 10px; color: var(--text-muted); font-weight: 500; }
+.ceiling-item-value { font-family: var(--font-mono); font-size: 13px; color: var(--accent); font-weight: 500; }
+
+/* ============================================================
+   ENVELOPE BAR
+   ============================================================ */
+.envelope-bar { position: relative; height: 8px; border-radius: 4px; background: var(--surface); box-shadow: var(--neu-surface-inset-sm); }
+.envelope-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s cubic-bezier(0.4,0,0.2,1); }
+.envelope-bar-fill.ok { background: linear-gradient(90deg, var(--accent), var(--accent-light)); }
+.envelope-bar-fill.over { background: linear-gradient(90deg, var(--deny), #ef4444); }
+.envelope-markers { position: relative; height: 18px; margin-top: 4px; }
+.envelope-marker { position: absolute; transform: translateX(-50%); font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); text-align: center; }
+.envelope-marker-line { width: 1px; height: 6px; background: var(--text-muted); margin: 0 auto 2px; }
+
+/* ============================================================
+   RESULT & TRACE
+   ============================================================ */
+.result-card { border-radius: var(--radius-lg); padding: 16px; display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.result-card.allow { background: var(--surface-high); box-shadow: var(--neu-surface-inset); border-left: 4px solid var(--permit); }
+.result-card.deny { background: var(--surface-high); box-shadow: var(--neu-surface-inset); border-left: 4px solid var(--deny); }
+.result-icon { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--surface-high); box-shadow: 2px 2px 5px var(--shadow-dark-surface), -2px -2px 5px var(--shadow-light-surface); }
+.result-icon.allow { color: var(--permit); }
+.result-icon.deny { color: var(--deny); }
+.result-decision { font-size: 20px; font-weight: 700; }
+.result-decision.allow { color: var(--permit); }
+.result-decision.deny { color: var(--deny); }
+.result-reason { font-size: 12px; color: var(--text-tertiary); }
+
+.trace-row { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: var(--radius-md); font-family: var(--font-mono); font-size: 12px; background: var(--surface-high); box-shadow: 3px 3px 6px var(--shadow-dark-surface), -3px -3px 6px var(--shadow-light-surface); }
+.trace-row + .trace-row { margin-top: 8px; }
+.trace-policy { color: var(--text-tertiary); flex: 1; }
+
+.recent-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); padding: 8px 10px; border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--neu-surface-inset-sm); }
+.recent-item + .recent-item { margin-top: 6px; }
+.recent-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.recent-dot.allow { background: var(--permit); }
+.recent-dot.deny { background: var(--deny); }
+.recent-agent { color: var(--text-tertiary); }
+.recent-time { margin-left: auto; font-family: var(--font-mono); font-size: 11px; }
+
+/* ============================================================
+   RSoP TABLE
+   ============================================================ */
+.rsop-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
+.rsop-table th { text-align: left; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; padding: 8px 12px; }
+.rsop-table td { padding: 12px; font-size: 13px; color: var(--text-secondary); background: var(--surface-high); }
+.rsop-table tr td:first-child { border-radius: var(--radius-md) 0 0 var(--radius-md); }
+.rsop-table tr td:last-child { border-radius: 0 var(--radius-md) var(--radius-md) 0; }
+.rsop-table tbody tr { box-shadow: 3px 3px 6px var(--shadow-dark-surface), -3px -3px 6px var(--shadow-light-surface); }
+.rsop-status-wins { color: var(--deny); font-size: 11px; font-weight: 600; }
+.rsop-status-active { color: var(--text-muted); font-size: 11px; }
+
+.effective-box { background: var(--surface); box-shadow: var(--neu-raised); border-radius: var(--radius-lg); padding: 16px; margin-top: 16px; }
+.effective-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: var(--accent); }
+.effective-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+.effective-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
+.effective-item-label { font-size: 10px; color: var(--text-muted); margin-bottom: 2px; font-weight: 500; }
+.effective-item-value { font-family: var(--font-mono); font-size: 14px; color: var(--accent); font-weight: 500; }
+.effective-item-source { font-size: 10px; color: var(--text-muted); }
+
+/* ============================================================
+   CODE EDITOR
+   ============================================================ */
+.code-tabs { display: flex; gap: 4px; padding: 4px; border-radius: var(--radius-md); }
+.code-tab { padding: 8px 16px; font-size: 12px; font-weight: 600; color: var(--text-muted); background: var(--surface); border: none; cursor: pointer; border-radius: var(--radius-sm); transition: box-shadow 0.12s; box-shadow: var(--neu-surface-raised-sm); }
+.code-tab:hover { color: var(--text-secondary); }
+.code-tab.active { box-shadow: var(--neu-surface-inset-sm); color: var(--accent); }
+.code-area { flex: 1; overflow: auto; padding: 16px; font-family: var(--font-mono); font-size: 13px; line-height: 1.8; white-space: pre-wrap; }
+.code-line { display: flex; }
+.code-line-num { user-select: none; color: var(--text-muted); width: 32px; text-align: right; margin-right: 16px; font-size: 12px; }
+.cedar-keyword { color: #1b4f8a; font-weight: 600; }
+.cedar-entity { color: var(--info); }
+.cedar-string { color: var(--purple); }
+.cedar-operator { color: var(--text-muted); }
+.cedar-number { color: var(--orange); }
+.cedar-comment { color: var(--text-muted); font-style: italic; }
+.code-status { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.code-valid { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--permit); font-weight: 500; }
+.code-valid-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--permit); }
+.code-hash { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+
+/* ============================================================
+   VERSION TIMELINE
+   ============================================================ */
+.timeline { position: relative; padding-left: 32px; }
+.timeline-line { position: absolute; left: 11px; top: 0; bottom: 0; width: 4px; border-radius: 2px; background: var(--bg); box-shadow: inset 1px 1px 3px var(--shadow-dark), inset -1px -1px 2px var(--shadow-light); }
+.timeline-item { position: relative; padding: 16px 18px; border-radius: var(--radius-lg); cursor: pointer; margin-bottom: 12px; background: var(--surface); box-shadow: var(--neu-raised-sm); transition: box-shadow 0.15s; }
+.timeline-item:hover { box-shadow: var(--neu-raised); }
+.timeline-item.selected { box-shadow: var(--neu-inset); }
+.timeline-dot { position: absolute; left: -25px; top: 22px; width: 14px; height: 14px; border-radius: 50%; z-index: 1; }
+.timeline-dot.active { background: var(--accent); box-shadow: 2px 2px 5px var(--shadow-dark), -2px -2px 5px var(--shadow-light); }
+.timeline-dot.inactive { background: var(--surface-high); box-shadow: 2px 2px 5px var(--shadow-dark), -2px -2px 5px var(--shadow-light); border: 2px solid var(--shadow-dark); }
+.timeline-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.timeline-version { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.timeline-date { margin-left: auto; font-size: 12px; color: var(--text-muted); }
+.timeline-desc { font-size: 13px; color: var(--text-tertiary); margin-bottom: 8px; }
+.timeline-meta { display: flex; align-items: center; gap: 16px; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+.timeline-rollback { margin-left: auto; color: var(--accent); cursor: pointer; display: flex; align-items: center; gap: 4px; background: none; border: none; font-size: 12px; font-weight: 500; }
+.diff-box { margin-top: 10px; background: var(--surface); box-shadow: var(--neu-surface-inset-sm); border-radius: var(--radius-md); padding: 12px; font-family: var(--font-mono); font-size: 12px; }
+.diff-title { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; font-weight: 600; }
+.diff-del { color: var(--deny); }
+.diff-add { color: var(--permit); }
+
+/* ============================================================
+   CHAT SIDEBAR
+   ============================================================ */
+.chat-sidebar { width: 340px; background: var(--surface); display: flex; flex-direction: column; flex-shrink: 0; box-shadow: -4px 0 12px rgba(0,0,0,0.06); }
+.chat-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; }
+.chat-header-left { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+.chat-close { background: none; border: none; color: var(--text-muted); cursor: pointer; }
+.chat-body { flex: 1; overflow: auto; padding: 16px; }
+.chat-msg + .chat-msg { margin-top: 16px; }
+.chat-msg-role { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.chat-msg-bubble { font-size: 13px; line-height: 1.6; padding: 12px 14px; border-radius: var(--radius-lg); }
+.chat-msg-bubble.user { background: var(--surface); box-shadow: var(--neu-surface-raised-sm); color: var(--text-secondary); }
+.chat-msg-bubble.assistant { background: var(--surface); box-shadow: var(--neu-surface-inset); color: var(--text-secondary); }
+.chat-input-area { padding: 12px; }
+.chat-input-box { display: flex; align-items: center; gap: 8px; background: var(--surface); box-shadow: var(--neu-surface-inset); border-radius: var(--radius-lg); padding: 10px 14px; }
+.chat-input { flex: 1; background: none; border: none; font-size: 13px; color: var(--text-primary); outline: none; font-family: var(--font-sans); }
+.chat-input::placeholder { color: var(--text-muted); }
+.chat-send { background: none; border: none; color: var(--accent); cursor: pointer; }
+.chat-provider select { background: var(--surface); border: none; box-shadow: var(--neu-surface-inset-sm); border-radius: var(--radius-sm); padding: 4px 10px; font-size: 11px; color: var(--text-muted); outline: none; margin-top: 8px; }
+
+/* ============================================================
+   PETITION & ASSIGNMENTS
+   ============================================================ */
+.petition-box { background: var(--surface); box-shadow: var(--neu-surface-inset); border-radius: var(--radius-md); padding: 12px; }
+.petition-title { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.petition-items { display: flex; gap: 16px; }
+.petition-item { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); cursor: pointer; }
+.petition-item.disabled { color: var(--text-muted); cursor: not-allowed; }
+.petition-hard-wall { font-size: 10px; color: var(--deny); margin-left: 2px; }
+
+.assign-card { background: var(--surface); box-shadow: var(--neu-raised); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 12px; }
+.assign-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.assign-card-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.assign-target { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: var(--radius-md); background: var(--surface-high); box-shadow: 3px 3px 6px var(--shadow-dark-surface), -3px -3px 6px var(--shadow-light-surface); font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; transition: box-shadow 0.12s; }
+.assign-target:hover { box-shadow: 4px 4px 8px var(--shadow-dark-surface), -4px -4px 8px var(--shadow-light-surface); }
+.assign-target .assign-remove { margin-left: auto; color: var(--text-muted); cursor: pointer; opacity: 0.5; }
+.assign-target .assign-remove:hover { opacity: 1; color: var(--deny); }
+.assign-empty { font-size: 12px; color: var(--text-muted); font-style: italic; padding: 8px; }
+.assign-add-row { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.stagger > * { animation: slideUp 0.25s ease-out both; }
+.stagger > *:nth-child(1) { animation-delay: 0.04s; }
+.stagger > *:nth-child(2) { animation-delay: 0.08s; }
+.stagger > *:nth-child(3) { animation-delay: 0.12s; }
+.stagger > *:nth-child(4) { animation-delay: 0.16s; }
+.stagger > *:nth-child(5) { animation-delay: 0.2s; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState } = React;
+
+/* ================================================================
+   API CONTRACTS — all data comes from these endpoints
+   ================================================================
+
+   GET /api/groups?org_id={org_id}
+   → { id: uuid, name: string, node_type: "org"|"department"|"team", path: ltree,
+       parent_id: uuid|null, children: Group[] }
+   Schema: groups table (schema.sql:43). Recursive tree via ltree path.
+
+   GET /api/agents?org_id={org_id}
+   → { id: uuid, name: string, email: string|null, domain: domain_enum,
+       is_active: boolean, group_ids: uuid[] }
+   Schema: agents + agent_group_memberships (schema.sql:59-73)
+
+   GET /api/action-types?domain={domain}
+   → { id: uuid, domain: domain_enum, name: string, description: string|null,
+       dimensions: DimensionDef[] }
+   Schema: action_types + dimension_definitions (schema.sql:78-101)
+
+   GET /api/policies?org_id={org_id}
+   → { id: uuid, name: string, domain: domain_enum, effect: "allow"|"deny",
+       active_version: PolicyVersion, assignments: Assignment[] }
+   Schema: policies + policy_versions + policy_assignments (schema.sql:106-155)
+
+   GET /api/policies/{policy_id}/versions
+   → { id: uuid, version_number: int, constraints: jsonb, cedar_source: string,
+       cedar_hash: string (sha256), created_at: timestamptz, created_by: uuid|null }
+   Schema: policy_versions (schema.sql:117-132)
+
+   GET /api/rsop?agent_id={agent_id}
+   → { level: "org"|"dept"|"team"|"agent", source: string, policy: string,
+       effect: "permit"|"deny", conditions: string, wins: boolean }
+   Derived: resolves all policies via group ancestry (ltree @> operator)
+
+   GET /api/envelope?agent_id={agent_id}
+   → { levels: EnvelopeLevel[], ceiling: Constraint[], dimensions: Dimension[] }
+   Derived: resolves parent chain ceiling per dimension (numeric→min, set→intersect, bool→AND)
+
+   POST /api/check
+   ← { agent_id: uuid, action: string, context: Record<string,any> }
+   → { decision: "allow"|"deny"|"not_applicable"|"error", reason: string,
+       matched_version_id: uuid|null, trace: TraceEntry[], bundle_hash: string }
+   Schema: decision_log (schema.sql:160-177). Cedar WASM eval client-side; Rust /check server-side.
+
+   GET /api/decisions?agent_id={agent_id}&limit={n}
+   → { id: uuid, agent_id: uuid, action_type_id: uuid, outcome: decision_outcome,
+       reason: string|null, evaluated_at: timestamptz }
+   Schema: decision_log (schema.sql:160-177)
+
+   ================================================================ */
+
+// All data arrays are empty — populated by API calls at runtime.
+// Components render empty/loading states when arrays are empty.
+
+const ORG_TREE = null;   // GET /api/groups?org_id=...
+const AGENTS = [];        // GET /api/agents?org_id=...
+const GROUPS = [];        // derived from ORG_TREE (non-agent nodes)
+const ACTION_TYPES = [];  // GET /api/action-types
+const POLICIES_LIST = []; // GET /api/policies?org_id=...
+const RSOP = [];          // GET /api/rsop?agent_id=...
+const VERSIONS = [];      // GET /api/policies/:id/versions
+const DECISION_LOG = [];  // GET /api/decisions?agent_id=...&limit=N
+
+/* ================================================================
+   SVG ICONS
+   ================================================================ */
+const I = {
+  Shield: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+  Code: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>,
+  Terminal: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>,
+  Layers: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>,
+  Clock: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  Chat: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
+  Check: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>,
+  X: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+  Play: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>,
+  Hash: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>,
+  Undo: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 105.18-10.49L1 10"/></svg>,
+  Send: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
+  Lock: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>,
+  Folder: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>,
+  Users: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>,
+  Bot: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><line x1="12" y1="7" x2="12" y2="11"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>,
+  ChevDown: () => <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>,
+  ChevRight: () => <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>,
+  Link: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>,
+  Plus: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  Trash: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>,
+  FileText: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
+};
+
+/* ================================================================
+   SHARED COMPONENTS
+   ================================================================ */
+
+function Badge({ type, children }) {
+  return <span className={`badge badge-${type}`}>{children}</span>;
+}
+
+function NeuCheckbox({ checked, onChange, disabled }) {
+  return (
+    <div
+      className={`neu-checkbox ${checked ? 'checked' : 'unchecked'} ${disabled ? 'disabled' : ''}`}
+      onClick={() => !disabled && onChange && onChange(!checked)}
+    >
+      {checked && <I.Check />}
+    </div>
+  );
+}
+
+function TreeNode({ node, selected, onSelect, depth = 0 }) {
+  const [expanded, setExpanded] = useState(depth < 2);
+  const hasChildren = node.children && node.children.length > 0;
+  const icons = { org: I.Folder, dept: I.Users, team: I.Users, agent: I.Bot };
+  const Icon = icons[node.type] || I.Folder;
+  return (
+    <div>
+      <div
+        className={`tree-node ${selected === node.id ? 'selected' : ''}`}
+        style={{ paddingLeft: 10 + depth * 14 }}
+        onClick={() => onSelect(node.id)}
+      >
+        <span className="tree-toggle" onClick={e => { e.stopPropagation(); setExpanded(!expanded); }}>
+          {hasChildren ? (expanded ? <I.ChevDown /> : <I.ChevRight />) : ''}
+        </span>
+        <span className="tree-icon"><Icon /></span>
+        <span className="tree-label">{node.name}</span>
+        {node.policies > 0 && <span className="tree-badge">{node.policies}</span>}
+      </div>
+      {hasChildren && expanded && (
+        <div className="tree-children">
+          {node.children.map(child => (
+            <TreeNode key={child.id} node={child} selected={selected} onSelect={onSelect} depth={depth + 1} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* EnglishSummary — Deterministic plain-language summary generated from constraint types via template interpolation (NOT LLM)
+   Input: rules[] from resolved envelope/policy constraints
+   Each rule: { type: "permit"|"deny", text: string } — text is template-interpolated from dimension values */
+function EnglishSummary({ rules }) {
+  if (!rules || rules.length === 0) return null;
+  return (
+    <div className="summary-card">
+      <div className="summary-title">What these rules mean</div>
+      <div className="summary-text">
+        <ul style={{margin:0,padding:0}}>
+          {rules.map((r,i) => <li key={i} className={`${r.type}-rule`}>{r.text}</li>)}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+// Cedar/Rego syntax highlighter — single-pass tokenizer
+function highlightCode(line) {
+  const tokens = [];
+  const re = /(\/\/.*|#.*)|((?:Action|Agent|Group|Resource)::"[^"]*")|("(?:[^"\\]|\\.)*")|\b(permit|forbid|when|unless|in|package|deny|import|true|false)\b|\b(context|principal|action|resource|input|data)\b|\b(\d+)\b|(&&|\|\||==|<=|>=|<|>|:=|\+)/g;
+  let last = 0, m;
+  while ((m = re.exec(line)) !== null) {
+    if (m.index > last) tokens.push(line.slice(last, m.index));
+    if (m[1]) tokens.push('<span class="cedar-comment">' + m[1] + '</span>');
+    else if (m[2]) tokens.push('<span class="cedar-entity">' + m[2] + '</span>');
+    else if (m[3]) tokens.push('<span class="cedar-string">' + m[3] + '</span>');
+    else if (m[4]) tokens.push('<span class="cedar-keyword">' + m[4] + '</span>');
+    else if (m[5]) tokens.push('<span class="cedar-entity">' + m[5] + '</span>');
+    else if (m[6]) tokens.push('<span class="cedar-number">' + m[6] + '</span>');
+    else if (m[7]) tokens.push('<span class="cedar-operator">' + m[7] + '</span>');
+    last = re.lastIndex;
+  }
+  if (last < line.length) tokens.push(line.slice(last));
+  return tokens.join('') || '&nbsp;';
+}
+
+/* ================================================================
+   SURFACE VIEWS
+   ================================================================ */
+
+/* StructuredBuilder — Two-panel envelope editor
+   Data: GET /api/envelope?agent_id=...
+   Left panel: read-only parent envelope (hierarchy ceiling per dimension)
+   Right panel: editable child envelope (agent-level overrides within parent bounds)
+   Dimension controls: numeric (slider+input), set (multi-select chips), boolean (toggle), rate (count+window), temporal (time range)
+   Validation: red borders + disabled save when any value exceeds parent ceiling
+   Save: POST /api/policies/:id/versions → creates immutable policy_version with cedar_source + constraints JSON */
+function StructuredBuilder({ scope, envelope }) {
+  // Empty state — no envelope loaded yet
+  if (!envelope) {
+    return (
+      <div className="neu-panel" style={{textAlign:'center',padding:40}}>
+        <I.Shield />
+        <div className="panel-title" style={{marginTop:12}}>Structured Builder</div>
+        <p style={{fontSize:13,color:'var(--text-muted)',marginTop:8}}>Select an agent from the sidebar to load their envelope.</p>
+        <p style={{fontSize:11,color:'var(--text-muted)',marginTop:16,fontFamily:'var(--font-mono)'}}>GET /api/envelope?agent_id=...</p>
+      </div>
+    );
+  }
+
+  const [amount, setAmount] = useState(envelope.agentCap);
+  const isOver = amount > envelope.teamMax;
+  const [vendors, setVendors] = useState(envelope.agentVendors);
+  const [approval, setApproval] = useState(envelope.requiresApproval);
+  const [petitions, setPetitions] = useState({});
+  const toggleVendor = v => setVendors(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]);
+
+  return (
+    <div className="space-y">
+      {/* EnglishSummary: deterministic template interpolation from constraint types, NOT LLM-generated */}
+      <EnglishSummary rules={[]} />
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
+        {/* Left panel: parent envelope (read-only ceiling from hierarchy resolution) */}
+        <div className="neu-panel">
+          <div className="panel-header"><I.Lock /><span className="panel-title">Parent Envelope</span><Badge type="muted">read-only</Badge></div>
+          <p style={{fontSize:13,color:'var(--text-tertiary)',marginBottom:16}}>
+            Inherited ceiling for <span style={{color:'var(--accent)',fontWeight:500}}>{envelope.teamName}</span> via hierarchy
+          </p>
+          <div className="space-y stagger">
+            {/* Each level from envelope.levels: org → dept → team, with per-dimension constraints */}
+            {(envelope.levels || []).map((lvl, i) => (
+              <div key={i} className={`level-border ${lvl.type}`}>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}><Badge type={lvl.type}>{lvl.type.toUpperCase()}</Badge><span style={{fontSize:13,color:'var(--text-tertiary)'}}>{lvl.name}</span></div>
+                <div className="constraint-grid">
+                  {(lvl.constraints || []).map((c, j) => (
+                    <div key={j}><div className="constraint-label">{c.label}</div><div className={`constraint-value ${c.warn ? 'warn' : c.accent ? 'accent' : ''}`}>{c.value}</div></div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <div className="ceiling-box">
+              <div className="ceiling-title">Effective Ceiling</div>
+              <div className="ceiling-grid">
+                {(envelope.ceiling || []).map((c, i) => (
+                  <div key={i}><div className="ceiling-item-label">{c.label}</div><div className="ceiling-item-value">{c.value}</div></div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right panel: agent-level editable envelope */}
+        <div className="neu-panel flex-col">
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <span style={{fontSize:14,fontWeight:600}}>Agent Envelope</span>
+              <Badge type="agent">{envelope.agentId}</Badge>
+            </div>
+            {/* Save: POST /api/policies/:id/versions */}
+            <button className="neu-btn neu-btn-primary" disabled={isOver}>Save Policy</button>
+          </div>
+          <div className="space-y" style={{flex:1}}>
+            {/* Numeric dimension: slider + input, bounded by parent ceiling */}
+            <div>
+              <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+                <span className="field-label">Amount Ceiling</span>
+                <span className="field-hint" style={{color: isOver ? 'var(--deny)' : 'var(--text-muted)'}}>parent max: ${(envelope.teamMax || 0).toLocaleString()}</span>
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:16}}>
+                <input type="range" min="0" max={(envelope.orgMax || 1) * 1.1} value={amount} onChange={e => setAmount(+e.target.value)} style={{flex:1}} />
+                <div className={`neu-input ${isOver ? 'error' : ''}`} style={{width:100,textAlign:'right',padding:'8px 12px',fontSize:14,fontWeight:600}}>
+                  ${amount.toLocaleString()}
+                </div>
+              </div>
+              <div className="envelope-bar" style={{marginTop:8}}>
+                <div className={`envelope-bar-fill ${isOver ? 'over' : 'ok'}`} style={{width:`${Math.min((amount / (envelope.orgMax || 1)) * 100, 100)}%`}} />
+              </div>
+              <div className="envelope-markers">
+                <div className="envelope-marker" style={{left:`${((envelope.teamMax || 0) / (envelope.orgMax || 1)) * 100}%`}}><div className="envelope-marker-line" /> team</div>
+                <div className="envelope-marker" style={{left:`${((envelope.deptMax || 0) / (envelope.orgMax || 1)) * 100}%`}}><div className="envelope-marker-line" /> dept</div>
+                <div className="envelope-marker" style={{right:0,transform:'none'}}><div className="envelope-marker-line" /> org</div>
+              </div>
+              {isOver && <div className="error-text"><I.X /> Exceeds parent ceiling</div>}
+            </div>
+            {/* Set dimension: multi-select chips, disabled items outside parent set */}
+            <div>
+              <span className="field-label">Allowed Vendors</span>
+              <div style={{display:'flex',gap:8,marginTop:4}}>
+                {(envelope.allVendors || []).map(v => {
+                  const inTeam = (envelope.teamVendors || []).includes(v);
+                  const sel = vendors.includes(v);
+                  return <button key={v} disabled={!inTeam} onClick={() => toggleVendor(v)} className={`neu-chip ${!inTeam ? 'disabled' : sel ? 'selected' : 'unselected'}`}>
+                    {sel && <I.Check />} {v}
+                    {!inTeam && <span style={{fontSize:10,color:'var(--text-muted)',marginLeft:4}}>(not in set)</span>}
+                  </button>;
+                })}
+              </div>
+            </div>
+            {/* Boolean dimension: toggle switch */}
+            <div>
+              <span className="field-label">Requires Human Approval</span>
+              <div style={{display:'flex',alignItems:'center',gap:12,marginTop:4}}>
+                <div className={`neu-toggle ${approval ? 'on' : ''}`} onClick={() => setApproval(!approval)}>
+                  <div className="neu-toggle-thumb" style={{left: approval ? '24px' : '2px'}} />
+                </div>
+                <span style={{fontSize:13,color:'var(--text-secondary)'}}>{approval ? 'Required' : 'Not required'}</span>
+              </div>
+            </div>
+            {/* Temporal dimension: time range picker */}
+            <div>
+              <span className="field-label">Operating Window</span>
+              <div style={{display:'flex',alignItems:'center',gap:12,marginTop:4}}>
+                <input type="time" className="neu-input" style={{width:130}} />
+                <span style={{fontSize:13,color:'var(--text-muted)'}}>to</span>
+                <input type="time" className="neu-input" style={{width:130}} />
+              </div>
+            </div>
+            {/* Petitionable dimensions: agent can request override for unlocked dims */}
+            <div className="petition-box">
+              <div className="petition-title">Petitionable Dimensions</div>
+              <div className="petition-items">
+                {(envelope.dimensions || []).map(d => (
+                  <label key={d.name} className={`petition-item ${d.locked ? 'disabled' : ''}`} onClick={e => e.preventDefault()}>
+                    <NeuCheckbox checked={petitions[d.name] || false} onChange={v => setPetitions(p => ({...p, [d.name]: v}))} disabled={d.locked} />
+                    {d.name}
+                    {d.locked && <span className="petition-hard-wall">(hard wall)</span>}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* CodeEditor — Cedar/Rego source viewer with syntax highlighting
+   Data: policy_versions.cedar_source from GET /api/policies/:id/versions/:version_id
+   Features: Cedar Monarch tokenizer, live WASM validation on debounce (300ms),
+   toggle Cedar ↔ OPA/Rego, SHA-256 hash display from policy_versions.cedar_hash
+   Production: replace with Monaco Editor (@monaco-editor/react) */
+function CodeEditor({ cedarSource, hash }) {
+  const [tab, setTab] = useState('cedar');
+  const code = cedarSource || '';
+
+  return (
+    <div className="space-y">
+      <EnglishSummary rules={[]} />
+      <div className="neu-panel flex-col" style={{padding:0,overflow:'hidden'}}>
+        <div style={{display:'flex',alignItems:'center',padding:'8px 12px',gap:12}}>
+          <div className="code-tabs">
+            <button className={`code-tab ${tab === 'cedar' ? 'active' : ''}`} onClick={() => setTab('cedar')}>Cedar</button>
+            <button className={`code-tab ${tab === 'rego' ? 'active' : ''}`} onClick={() => setTab('rego')}>OPA / Rego</button>
+          </div>
+          <div className="code-status">
+            {/* Validation status: Cedar WASM validates on change, pushes diagnostics via setModelMarkers() */}
+            <span className="code-valid"><span className="code-valid-dot" /> Valid</span>
+            {/* SHA-256 from policy_versions.cedar_hash (GENERATED ALWAYS AS digest()) */}
+            <span className="code-hash">SHA-256: {hash || '--'}</span>
+          </div>
+        </div>
+        <div className="code-area">
+          {code ? code.split('\n').map((line, i) => (
+            <div key={i} className="code-line">
+              <span className="code-line-num">{i + 1}</span>
+              <span dangerouslySetInnerHTML={{__html: highlightCode(line)}} />
+            </div>
+          )) : (
+            <div style={{padding:24,color:'var(--text-muted)',textAlign:'center'}}>
+              <p>No policy selected. Select a policy to view its Cedar source.</p>
+              <p style={{fontFamily:'var(--font-mono)',fontSize:11,marginTop:8}}>GET /api/policies/:id/versions/:version_id</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Repl — Test harness for policy evaluation
+   Left panel: request form (agent selector, action type, context key-value pairs)
+   Right panel: result display (permit/deny badge, reason, matched policies, execution trace)
+   Evaluate: Cedar WASM client-side (<1ms) OR POST /api/check server-side
+   Batch mode: JSON array of test cases → pass/fail grid (saveable as regression suite)
+   Data sources:
+     Agents: GET /api/agents?org_id=...
+     Action types: GET /api/action-types
+     Trace: returned from POST /api/check → trace[]
+     Recent: GET /api/decisions?agent_id=...&limit=N */
+function Repl({ agents, actionTypes, rsop, decisionLog }) {
+  const [agent, setAgent] = useState('');
+  const [action, setAction] = useState('');
+  const [ctx, setCtx] = useState({});
+  const [result, setResult] = useState(null);
+
+  // POST /api/check → { decision, reason, matched_version_id, trace[], bundle_hash }
+  const run = () => {};
+
+  return (
+    <div className="grid-2">
+      <div className="neu-panel flex-col">
+        <div className="panel-header"><I.Terminal /><span className="panel-title">Request</span></div>
+        <div className="space-y" style={{flex:1}}>
+          {/* Agent selector: populated from GET /api/agents */}
+          <div><span className="field-label">Agent</span>
+            <select value={agent} onChange={e => setAgent(e.target.value)} className="neu-select" style={{width:'100%'}}>
+              <option value="">Select agent...</option>
+              {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          </div>
+          {/* Action type selector: populated from GET /api/action-types */}
+          <div><span className="field-label">Action</span>
+            <select value={action} onChange={e => setAction(e.target.value)} className="neu-select" style={{width:'100%'}}>
+              <option value="">Select action...</option>
+              {actionTypes.map(a => <option key={a.id} value={a.id}>{a.id}</option>)}
+            </select>
+          </div>
+          {/* Context params: dynamic key-value pairs based on dimension_definitions for selected action */}
+          <div><span className="field-label">Context</span>
+            <div className="space-y-sm">
+              {Object.entries(ctx).map(([k, v]) => (
+                <div key={k} style={{display:'flex',alignItems:'center',gap:8}}>
+                  <span style={{fontFamily:'var(--font-mono)',fontSize:12,color:'var(--text-muted)',width:160}}>{k}</span>
+                  <input value={v} onChange={e => setCtx(p => ({...p, [k]: e.target.value}))} className="neu-input" style={{flex:1}} />
+                </div>
+              ))}
+              <p style={{fontSize:11,color:'var(--text-muted)',fontFamily:'var(--font-mono)'}}>{Object.keys(ctx).length === 0 ? 'Context params auto-populate from action type dimensions' : ''}</p>
+            </div>
+          </div>
+        </div>
+        <button onClick={run} className="neu-btn neu-btn-primary" disabled={!agent || !action} style={{width:'100%',marginTop:16}}><I.Play /> Evaluate</button>
+      </div>
+      <div className="neu-panel flex-col">
+        <div className="panel-header"><span className="panel-title">Result</span></div>
+        {/* Result card: shows after POST /api/check returns */}
+        {result ? (
+          <div className={`result-card ${result.decision}`}>
+            <div className={`result-icon ${result.decision}`}>{result.decision === 'allow' ? <I.Check /> : <I.X />}</div>
+            <div>
+              <div className={`result-decision ${result.decision}`}>{result.decision.toUpperCase()}</div>
+              <div className="result-reason">{result.reason}</div>
+            </div>
+          </div>
+        ) : (
+          <div className="result-card allow" style={{borderLeftColor:'var(--text-muted)'}}>
+            <div className="result-icon" style={{color:'var(--text-muted)'}}><I.Play /></div>
+            <div>
+              <div style={{fontSize:14,fontWeight:600,color:'var(--text-muted)'}}>No evaluation yet</div>
+              <div className="result-reason">Select an agent and action, then click Evaluate</div>
+            </div>
+          </div>
+        )}
+        {/* Trace: from POST /api/check → trace[] (each matched policy with level + effect) */}
+        <div style={{flex:1,overflow:'auto'}}>
+          <div className="section-label">Evaluation Trace</div>
+          {rsop.length === 0 && <p style={{fontSize:12,color:'var(--text-muted)',fontStyle:'italic'}}>Run an evaluation to see the trace</p>}
+          {rsop.map((p, i) => (
+            <div key={i} className="trace-row">
+              <Badge type={p.level}>{p.level.toUpperCase()}</Badge>
+              <span className="trace-policy">{p.policy}</span>
+              <Badge type={p.effect === 'deny' ? 'deny' : 'permit'}>{p.effect}</Badge>
+            </div>
+          ))}
+        </div>
+        {/* Recent decisions: GET /api/decisions?agent_id=...&limit=N */}
+        <div className="section-divider">
+          <div className="section-label">Recent</div>
+          {decisionLog.length === 0 && <p style={{fontSize:12,color:'var(--text-muted)',fontStyle:'italic'}}>No recent decisions</p>}
+          {decisionLog.map((h, i) => (
+            <div key={i} className="recent-item">
+              <span className={`recent-dot ${h.outcome}`} />
+              <span className="recent-agent">{h.agent}</span>
+              <span>{h.action}</span>
+              <span className="recent-time">{h.time}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* RsopView — Conflict visualization (Resultant Set of Policy)
+   Data: GET /api/rsop?agent_id=... → resolved policy list via group ancestry (ltree @> operator)
+   Table: each row = matching policy, columns = hierarchy level, source group, policy name, effect, conditions, status
+   Color-coded by level (org=purple, dept=blue, team=cyan, agent=orange)
+   "WINS" badge on deny policies that override permits at same/lower level
+   Effective envelope below: intersection of all constraints, read-only structured builder view */
+function RsopView({ rsop, effectiveEnvelope }) {
+  return (
+    <div className="flex-col" style={{height:'100%'}}>
+      <div className="neu-panel" style={{flex:1,overflow:'auto',padding:'12px 16px'}}>
+        {rsop.length === 0 ? (
+          <div style={{textAlign:'center',padding:40,color:'var(--text-muted)'}}>
+            <I.Layers />
+            <p style={{marginTop:8}}>Select an agent to see their resolved policy set.</p>
+            <p style={{fontFamily:'var(--font-mono)',fontSize:11,marginTop:8}}>GET /api/rsop?agent_id=...</p>
+          </div>
+        ) : (
+          <table className="rsop-table">
+            <thead><tr><th style={{width:72}}>Level</th><th>Source</th><th>Policy</th><th>Effect</th><th>Conditions</th><th style={{width:64}}>Status</th></tr></thead>
+            <tbody>
+              {rsop.map((r, i) => (
+                <tr key={i}>
+                  <td><Badge type={r.level}>{r.level.toUpperCase()}</Badge></td>
+                  <td>{r.source}</td>
+                  <td style={{fontWeight:500}}>{r.policy}</td>
+                  <td><Badge type={r.effect === 'deny' ? 'deny' : 'permit'}>{r.effect}</Badge></td>
+                  <td style={{fontSize:12,fontFamily:'var(--font-mono)'}}>{r.conditions}</td>
+                  <td>{r.effect === 'deny' ? <span className="rsop-status-wins">WINS</span> : <span className="rsop-status-active">active</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {/* Effective envelope: derived from RSoP resolution — intersection of all constraints */}
+      <div className="effective-box">
+        <div className="effective-header"><I.Shield /><span className="effective-title">Effective Envelope</span></div>
+        {effectiveEnvelope.length === 0 ? (
+          <p style={{fontSize:12,color:'var(--text-muted)',fontStyle:'italic'}}>No agent selected</p>
+        ) : (
+          <div className="effective-grid">
+            {effectiveEnvelope.map((item, i) => (
+              <div key={i}>
+                <div className="effective-item-label">{item.label}</div>
+                <div className="effective-item-value" style={item.deny ? {color:'var(--deny)'} : {}}>{item.value}</div>
+                <div className="effective-item-source">{item.source}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* Assignments — Policy-to-group/agent assignment management
+   Data: GET /api/policies?org_id=... (each policy includes assignments[])
+   Each policy card shows: name, effect badge, domain badge, list of assigned groups/agents
+   Add: POST /api/policy-assignments { policy_id, group_id|agent_id, policy_version_id }
+   Remove: DELETE /api/policy-assignments/:id
+   Group assignments cascade to all members via ltree hierarchy
+   Schema: policy_assignments (schema.sql:143-155) */
+function Assignments({ policies, groups, agents }) {
+  const [state, setState] = useState(policies.map(p => ({...p, assignments: [...(p.assignments || [])]})));
+  const [addingTo, setAddingTo] = useState(null);
+  const [addType, setAddType] = useState('group');
+  const [addTarget, setAddTarget] = useState('');
+
+  // POST /api/policy-assignments
+  const handleAdd = (policyId) => {
+    if (!addTarget) return;
+    const targetList = addType === 'group' ? groups : agents;
+    const target = targetList.find(t => t.id === addTarget);
+    if (!target) return;
+    setState(prev => prev.map(p => {
+      if (p.id !== policyId) return p;
+      if (p.assignments.some(a => a.id === target.id)) return p;
+      return { ...p, assignments: [...p.assignments, { type: addType, id: target.id, name: target.name }] };
+    }));
+    setAddingTo(null);
+    setAddTarget('');
+  };
+
+  // DELETE /api/policy-assignments/:id
+  const handleRemove = (policyId, targetId) => {
+    setState(prev => prev.map(p => {
+      if (p.id !== policyId) return p;
+      return { ...p, assignments: p.assignments.filter(a => a.id !== targetId) };
+    }));
+  };
+
+  if (state.length === 0) {
+    return (
+      <div className="neu-panel" style={{textAlign:'center',padding:40}}>
+        <I.Link />
+        <div className="panel-title" style={{marginTop:12}}>Policy Assignments</div>
+        <p style={{fontSize:13,color:'var(--text-muted)',marginTop:8}}>No policies found. Create a policy first.</p>
+        <p style={{fontSize:11,color:'var(--text-muted)',marginTop:16,fontFamily:'var(--font-mono)'}}>GET /api/policies?org_id=...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y">
+      <EnglishSummary rules={[]} />
+      {state.map(policy => (
+        <div key={policy.id} className="assign-card">
+          <div className="assign-card-header">
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <I.FileText />
+              <span className="assign-card-title">{policy.name}</span>
+              <Badge type={policy.effect === 'deny' ? 'deny' : 'permit'}>{policy.effect}</Badge>
+            </div>
+            <Badge type="accent">{policy.domain}</Badge>
+          </div>
+          <div className="section-label" style={{marginBottom:6}}>Assigned to</div>
+          <div className="space-y-sm">
+            {policy.assignments.length === 0 && <div className="assign-empty">No assignments</div>}
+            {policy.assignments.map((a, i) => (
+              <div key={i} className="assign-target">
+                {a.type === 'group' ? <I.Users /> : <I.Bot />}
+                <Badge type={a.type === 'group' ? 'team' : 'agent'}>{a.type.toUpperCase()}</Badge>
+                <span>{a.name}</span>
+                <span className="assign-remove" onClick={() => handleRemove(policy.id, a.id)}><I.Trash /></span>
+              </div>
+            ))}
+          </div>
+          {addingTo === policy.id ? (
+            <div className="assign-add-row">
+              <select value={addType} onChange={e => { setAddType(e.target.value); setAddTarget(''); }} className="neu-select" style={{width:100,padding:'6px 10px',fontSize:12}}>
+                <option value="group">Group</option>
+                <option value="agent">Agent</option>
+              </select>
+              <select value={addTarget} onChange={e => setAddTarget(e.target.value)} className="neu-select" style={{flex:1,padding:'6px 10px',fontSize:12}}>
+                <option value="">Select...</option>
+                {(addType === 'group' ? groups : agents).map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+              <button className="neu-btn neu-btn-primary" style={{padding:'6px 14px',fontSize:12}} onClick={() => handleAdd(policy.id)}>Add</button>
+              <button className="neu-btn neu-btn-ghost" style={{padding:'6px 14px',fontSize:12}} onClick={() => setAddingTo(null)}>Cancel</button>
+            </div>
+          ) : (
+            <button className="neu-btn neu-btn-ghost" style={{marginTop:8,padding:'6px 14px',fontSize:12}} onClick={() => { setAddingTo(policy.id); setAddTarget(''); }}>
+              <I.Plus /> Add Assignment
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* Versions — Policy version history timeline
+   Data: GET /api/policies/:id/versions → immutable version list, ordered by version_number DESC
+   Each version: { id, version_number, constraints (jsonb), cedar_source, cedar_hash (sha256),
+                   created_at, created_by }
+   Timeline: inset groove with raised dots. Active version = filled accent dot. Click to expand.
+   Diff: compare any two versions' cedar_source (text diff)
+   Rollback: POST /api/policies/:id/versions (promotes old version as new latest)
+   Schema: policy_versions (schema.sql:117-132) */
+function Versions({ versions }) {
+  const [sel, setSel] = useState(versions[0]?.id || '');
+
+  if (versions.length === 0) {
+    return (
+      <div className="neu-panel" style={{textAlign:'center',padding:40}}>
+        <I.Clock />
+        <div className="panel-title" style={{marginTop:12}}>Policy Versions</div>
+        <p style={{fontSize:13,color:'var(--text-muted)',marginTop:8}}>Select a policy to view its version history.</p>
+        <p style={{fontSize:11,color:'var(--text-muted)',marginTop:16,fontFamily:'var(--font-mono)'}}>GET /api/policies/:id/versions</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-col" style={{height:'100%'}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:16}}>
+        <I.Clock /><span className="panel-title">Policy Versions</span>
+      </div>
+      <div style={{flex:1,overflow:'auto'}}>
+        <div className="timeline">
+          <div className="timeline-line" />
+          <div className="stagger">
+            {versions.map(v => (
+              <div key={v.id} className={`timeline-item ${sel === v.id ? 'selected' : ''}`} onClick={() => setSel(v.id)}>
+                <div className={`timeline-dot ${v.active ? 'active' : 'inactive'}`} />
+                <div className="timeline-head">
+                  <span className="timeline-version">v{v.ver}</span>
+                  {v.active && <Badge type="accent">ACTIVE</Badge>}
+                  <span className="timeline-date">{v.date}</span>
+                </div>
+                <div className="timeline-desc">{v.desc}</div>
+                <div className="timeline-meta">
+                  {/* cedar_hash: SHA-256 GENERATED ALWAYS AS digest(cedar_source, 'sha256') */}
+                  <span style={{display:'flex',alignItems:'center',gap:4}}><I.Hash /> {v.hash}</span>
+                  <span>by {v.author}</span>
+                  {/* Rollback: POST /api/policies/:id/versions (promotes old cedar_source as new version) */}
+                  {!v.active && sel === v.id && <button className="timeline-rollback"><I.Undo /> Rollback</button>}
+                </div>
+                {/* Diff: text diff of cedar_source between version N and N-1 */}
+                {sel === v.id && v.ver > 1 && (
+                  <div className="diff-box">
+                    <div className="diff-title">Diff vs v{v.ver - 1}</div>
+                    <div className="diff-del">- {'{removed_line}'}</div>
+                    <div className="diff-add">+ {'{added_line}'}</div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ChatPanel — Agent-assisted policy authoring sidebar
+   Integration: Vercel AI SDK (useChat hook), provider-agnostic (OpenAI/Anthropic/Google)
+   Mode 1: NL → Policy — user describes rules, agent generates Cedar + constraints + test cases
+   Mode 2: Policy Analysis — "what can agent X do?" / "why was this denied?"
+   Mode 3: Dashboard Generation — user describes monitoring needs, agent derives charts
+   Validation pipeline: auto-test cases → Cedar WASM formal validation → plain-language summary
+   Conversation history persisted per session */
+function ChatPanel({ open, onClose }) {
+  if (!open) return null;
+  return (
+    <div className="chat-sidebar">
+      <div className="chat-header">
+        <div className="chat-header-left"><I.Chat /> Policy Assistant</div>
+        <button className="chat-close" onClick={onClose}><I.X /></button>
+      </div>
+      <div className="chat-body">
+        {/* Messages: useChat() from Vercel AI SDK populates this */}
+        <div style={{textAlign:'center',padding:24,color:'var(--text-muted)',fontSize:13}}>
+          <p>Describe a rule in plain English to generate Cedar policy, test cases, and structured constraints.</p>
+          <p style={{marginTop:8,fontSize:11,fontFamily:'var(--font-mono)'}}>Powered by Vercel AI SDK (useChat)</p>
+        </div>
+      </div>
+      <div className="chat-input-area">
+        <div className="chat-input-box">
+          <input className="chat-input" placeholder="Describe a policy..." />
+          <button className="chat-send"><I.Send /></button>
+        </div>
+        {/* Provider selector: LLM-agnostic via Vercel AI SDK */}
+        <div className="chat-provider">
+          <select><option>Claude (Anthropic)</option><option>GPT-4 (OpenAI)</option><option>Gemini (Google)</option></select>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ================================================================
+   APP — wires API data to surface views
+   In production: useEffect + fetch calls populate each data source
+   ================================================================ */
+
+// Envelope config — derived from GET /api/envelope?agent_id=...
+// Shape: { agentId, agentCap, teamMax, deptMax, orgMax, teamName,
+//          allVendors[], teamVendors[], agentVendors[],
+//          requiresApproval, windowStart, windowEnd,
+//          levels: [{ type, name, constraints: [{ label, value, warn?, accent? }] }],
+//          ceiling: [{ label, value }],
+//          dimensions: [{ name, locked }] }
+const ENVELOPE = null; // GET /api/envelope?agent_id=...
+
+// Cedar source — from GET /api/policies/:id/versions/:version_id (cedar_source field)
+const CEDAR_SOURCE = ''; // populated from policy_versions.cedar_source
+
+// Effective envelope — derived from GET /api/rsop?agent_id=... + envelope resolution
+// Shape: [{ label, value, source, deny? }]
+const EFFECTIVE_ENVELOPE = []; // derived from RSoP resolution
+
+function App() {
+  const [view, setView] = useState('builder');
+  const [chat, setChat] = useState(false);
+  const [selectedNode, setSelectedNode] = useState('');
+
+  const TABS = [
+    { id: 'builder', label: 'Builder', icon: I.Shield },
+    { id: 'code', label: 'Code', icon: I.Code },
+    { id: 'repl', label: 'Test', icon: I.Terminal },
+    { id: 'assign', label: 'Assign', icon: I.Link },
+    { id: 'rsop', label: 'RSoP', icon: I.Layers },
+    { id: 'versions', label: 'History', icon: I.Clock },
+  ];
+
+  /* Each view receives data from its API source.
+     In production: useEffect fetches data, useState holds it, loading states shown.
+     All views handle empty/null data gracefully with empty state UI. */
+  const views = {
+    builder: () => <StructuredBuilder scope={selectedNode} envelope={ENVELOPE} />,
+    code: () => <CodeEditor cedarSource={CEDAR_SOURCE} hash="" />,
+    repl: () => <Repl agents={AGENTS} actionTypes={ACTION_TYPES} rsop={RSOP} decisionLog={DECISION_LOG} />,
+    assign: () => <Assignments policies={POLICIES_LIST} groups={GROUPS} agents={AGENTS} />,
+    rsop: () => <RsopView rsop={RSOP} effectiveEnvelope={EFFECTIVE_ENVELOPE} />,
+    versions: () => <Versions versions={VERSIONS} />,
+  };
+  const View = views[view];
+
+  return (
+    <div className="app">
+      <header className="header">
+        <div className="header-logo">
+          <div className="header-logo-icon"><I.Shield /></div>
+          <span className="header-title">Governance Console</span>
+        </div>
+        <div className="header-sep" />
+        {/* Org name from GET /api/groups?org_id=... (root node) */}
+        <div className="header-org">org: <span>{ORG_TREE ? ORG_TREE.name : '--'}</span></div>
+        <div className="header-right">
+          <button className={`neu-btn ${chat ? 'neu-btn-ghost active' : 'neu-btn-ghost'}`} onClick={() => setChat(!chat)} style={{padding:'6px 14px',fontSize:12}}>
+            <I.Chat /> Assistant
+          </button>
+          <div className="header-avatar">U</div>
+        </div>
+      </header>
+
+      <div className="body">
+        {/* Sidebar: org hierarchy tree from GET /api/groups?org_id=... */}
+        <nav className="sidebar">
+          <div className="sidebar-section-label">Organization</div>
+          {ORG_TREE ? (
+            <TreeNode node={ORG_TREE} selected={selectedNode} onSelect={setSelectedNode} />
+          ) : (
+            <div style={{padding:'16px 8px',color:'var(--text-muted)',fontSize:12}}>
+              <p>No organization loaded.</p>
+              <p style={{fontFamily:'var(--font-mono)',fontSize:11,marginTop:8}}>GET /api/groups?org_id=...</p>
+            </div>
+          )}
+        </nav>
+
+        <main className="main">
+          <div className="surface-tabs">
+            {TABS.map(t => (
+              <button key={t.id} className={`surface-tab ${view === t.id ? 'active' : ''}`} onClick={() => setView(t.id)}>
+                <t.icon /> {t.label}
+              </button>
+            ))}
+          </div>
+          <View />
+        </main>
+
+        <ChatPanel open={chat} onClose={() => setChat(false)} />
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
