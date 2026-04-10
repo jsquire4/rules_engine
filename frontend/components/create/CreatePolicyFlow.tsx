@@ -6,9 +6,10 @@ import { CreateModal } from './CreateModal';
 import {
   fetchActionTypes, fetchGroups, fetchAgents,
   createPolicy, generateCedarFromConstraints, createAssignment,
-  fetchPolicyVersions,
+  createPolicyVersion, fetchPolicyVersions,
 } from '@/lib/api';
 import type { ActionTypeWithDimensionsResponse, GroupResponse, AgentResponse } from '@/lib/api';
+import { CedarEditor } from '../editor/CedarEditor';
 
 interface CreatePolicyFlowProps {
   onClose: () => void;
@@ -22,12 +23,18 @@ export function CreatePolicyFlow({ onClose }: CreatePolicyFlowProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  // Authoring mode: 'structured' or 'code'
+  const [mode, setMode] = useState<'structured' | 'code'>('structured');
+
   // Step 1: basic info
   const [name, setName] = useState('');
   const [domain, setDomain] = useState('');
   const [effect, setEffect] = useState('allow');
   const [actionTypes, setActionTypes] = useState<ActionTypeWithDimensionsResponse[]>([]);
   const [selectedAction, setSelectedAction] = useState('');
+
+  // Code mode
+  const [cedarSource, setCedarSource] = useState('');
 
   // Step 2: constraints
   const [constraints, setConstraints] = useState<Record<string, string>>({});
@@ -87,17 +94,22 @@ export function CreatePolicyFlow({ onClose }: CreatePolicyFlowProps) {
       // 1. Create policy
       const policy = await createPolicy({ name, domain, effect, orgId: ORG_ID });
 
-      // 2. Generate Cedar + create version
-      const constraintsJson = buildConstraintsJson();
-      const assignName = assignTarget === 'group'
-        ? groups.find(g => g.id === assignId)?.name
-        : agents.find(a => a.id === assignId)?.name;
+      if (mode === 'code') {
+        // Code mode: save raw Cedar directly
+        await createPolicyVersion(policy.id, cedarSource);
+      } else {
+        // Structured mode: generate Cedar from constraints
+        const constraintsJson = buildConstraintsJson();
+        const assignName = assignTarget === 'group'
+          ? groups.find(g => g.id === assignId)?.name
+          : agents.find(a => a.id === assignId)?.name;
 
-      const version = await generateCedarFromConstraints(
-        policy.id, constraintsJson, assignName || undefined, assignTarget
-      );
+        await generateCedarFromConstraints(
+          policy.id, constraintsJson, assignName || undefined, assignTarget
+        );
+      }
 
-      // 3. Create assignment if target selected
+      // Create assignment if target selected
       if (assignId) {
         const versions = await fetchPolicyVersions(policy.id);
         const latestVersion = versions.sort((a, b) => b.versionNumber - a.versionNumber)[0];
@@ -120,7 +132,7 @@ export function CreatePolicyFlow({ onClose }: CreatePolicyFlowProps) {
   };
 
   return (
-    <CreateModal title="New Policy" onClose={onClose}>
+    <CreateModal title="New Policy" onClose={onClose} wide={mode === 'code'}>
       {/* Step indicators */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
         {[1, 2, 3].map(s => (
@@ -156,21 +168,53 @@ export function CreatePolicyFlow({ onClose }: CreatePolicyFlowProps) {
             </div>
           </div>
           <div>
-            <span className="field-label">Action Type</span>
-            <select className="neu-select" style={{ width: '100%' }} value={selectedAction} onChange={e => setSelectedAction(e.target.value)}>
-              <option value="">Select action...</option>
-              {filteredActions.map(at => (
-                <option key={at.id} value={at.name}>{at.name}</option>
-              ))}
-            </select>
+            <span className="field-label">Authoring Mode</span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className={`neu-chip ${mode === 'structured' ? 'selected' : 'unselected'}`} onClick={() => setMode('structured')}>Structured</button>
+              <button className={`neu-chip ${mode === 'code' ? 'selected' : 'unselected'}`} onClick={() => setMode('code')}>Code</button>
+            </div>
           </div>
-          <button className="neu-btn neu-btn-primary" disabled={!name || !domain || !selectedAction} onClick={() => setStep(2)}>
-            Next: Set Constraints
+          {mode === 'structured' && (
+            <div>
+              <span className="field-label">Action Type</span>
+              <select className="neu-select" style={{ width: '100%' }} value={selectedAction} onChange={e => setSelectedAction(e.target.value)}>
+                <option value="">Select action...</option>
+                {filteredActions.map(at => (
+                  <option key={at.id} value={at.name}>{at.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <button
+            className="neu-btn neu-btn-primary"
+            disabled={!name || !domain || (mode === 'structured' && !selectedAction)}
+            onClick={() => setStep(2)}
+          >
+            {mode === 'code' ? 'Next: Write Cedar' : 'Next: Set Constraints'}
           </button>
         </div>
       )}
 
-      {step === 2 && selectedActionType && (
+      {step === 2 && mode === 'code' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+            Write Cedar policy source. The editor validates syntax in real time.
+          </p>
+          <div style={{ borderRadius: 'var(--radius-md)', overflow: 'hidden', boxShadow: 'var(--neu-surface-inset)' }}>
+            <CedarEditor
+              value={cedarSource}
+              onChange={setCedarSource}
+              height="240px"
+            />
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="neu-btn neu-btn-ghost" onClick={() => setStep(1)}>Back</button>
+            <button className="neu-btn neu-btn-primary" disabled={!cedarSource.trim()} onClick={() => setStep(3)}>Next: Assign</button>
+          </div>
+        </div>
+      )}
+
+      {step === 2 && mode === 'structured' && selectedActionType && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
             Set dimension values for <strong>{selectedAction}</strong>. Leave blank to skip.
