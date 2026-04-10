@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  webpack(config) {
+    // Allow importing .wasm files (needed for @cedar-policy/cedar-wasm)
+    config.experiments = { ...config.experiments, asyncWebAssembly: true };
+    return config;
+  },
   async rewrites() {
     return [
       {

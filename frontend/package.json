@@ -9,11 +9,14 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@cedar-policy/cedar-wasm": "^4.9.1",
+    "@monaco-editor/react": "^4.7.0",
     "@radix-ui/react-checkbox": "^1.3.3",
     "@radix-ui/react-popover": "^1.1.15",
     "@radix-ui/react-slider": "^1.3.6",
     "@radix-ui/react-switch": "^1.2.6",
     "clsx": "^2.1.1",
+    "comlink": "^4.4.2",
     "next": "14.2.21",
     "react": "^18",
     "react-day-picker": "^9.14.0",

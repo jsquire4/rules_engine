@@ -3,6 +3,8 @@ package com.rulesengine.tables
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.StringColumnType
 import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.sql.statements.api.PreparedStatementApi
+import java.sql.Types
 
 // Custom LTREE column type for PostgreSQL hierarchical paths
 class LtreeColumnType : StringColumnType() {
@@ -11,6 +13,26 @@ class LtreeColumnType : StringColumnType() {
 
 fun Table.ltree(name: String): Column<String> =
     registerColumn(name, LtreeColumnType())
+
+// JSONB column type — stores/retrieves as String but uses JSONB SQL type for proper Postgres handling
+class JsonbColumnType : StringColumnType() {
+    override fun sqlType(): String = "JSONB"
+    override fun setParameter(stmt: PreparedStatementApi, index: Int, value: Any?) {
+        val obj = value?.let {
+            org.postgresql.util.PGobject().apply {
+                type = "jsonb"
+                this.value = it as String
+            }
+        }
+        super.setParameter(stmt, index, obj)
+    }
+}
+
+fun Table.jsonb(name: String): Column<String> =
+    registerColumn(name, JsonbColumnType())
+
+// Note: .databaseGenerated() is provided by Exposed 0.58+ (org.jetbrains.exposed.sql.Column).
+// It marks a column as database-generated, excluding it from INSERT/UPDATE but including in SELECT.
 
 // PostgreSQL native enum helper
 inline fun <reified T : Enum<T>> Table.pgEnum(

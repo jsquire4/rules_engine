@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use axum::Router;
 use axum::routing::{get, post};
-use cedar_policy::PolicySet;
+use cedar_policy::{Entities, PolicySet};
 use sqlx::postgres::PgPool;
 use tokio::sync::RwLock;
 use tower_http::cors::CorsLayer;
@@ -14,6 +14,7 @@ mod routes;
 pub struct AppState {
     pub pool: PgPool,
     pub policies: RwLock<PolicySet>,
+    pub entities: RwLock<Entities>,
 }
 
 #[tokio::main]
@@ -29,9 +30,10 @@ async fn main() {
         .await
         .expect("Failed to connect to database");
 
-    // Retry policy loading — Flyway migrations run from the management service,
+    // Retry policy + entity loading — Flyway migrations run from the management service,
     // so tables may not exist yet when the engine starts.
     let mut policy_set = PolicySet::new();
+    let mut entities = Entities::empty();
     for attempt in 1..=30 {
         match db::load_policy_sources(&pool).await {
             Ok(sources) => {
@@ -40,6 +42,17 @@ async fn main() {
                     Ok(ps) => {
                         policy_set = ps;
                         tracing::info!("Loaded {} Cedar policy source(s)", sources.len());
+
+                        // Also load entities (agent→group memberships + group hierarchy)
+                        match load_entities_from_db(&pool).await {
+                            Ok(ents) => {
+                                entities = ents;
+                                tracing::info!("Loaded Cedar entity hierarchy");
+                            }
+                            Err(e) => {
+                                tracing::warn!("Failed to load entities: {e} — using empty entity set");
+                            }
+                        }
                         break;
                     }
                     Err(e) => {
@@ -61,6 +74,7 @@ async fn main() {
     let state = Arc::new(AppState {
         pool,
         policies: RwLock::new(policy_set),
+        entities: RwLock::new(entities),
     });
 
     let app = Router::new()
@@ -76,4 +90,18 @@ async fn main() {
 
     tracing::info!("Cedar engine listening on 0.0.0.0:3001");
     axum::serve(listener, app).await.expect("Server error");
+}
+
+async fn load_entities_from_db(pool: &PgPool) -> Result<Entities, Box<dyn std::error::Error>> {
+    let memberships = db::load_agent_memberships(pool).await?;
+    let groups = db::load_group_hierarchy(pool).await?;
+
+    let membership_tuples: Vec<(String, Vec<String>)> = memberships
+        .into_iter()
+        .map(|m| (m.agent_name, m.group_paths))
+        .collect();
+    let group_paths: Vec<String> = groups.into_iter().map(|g| g.path).collect();
+
+    let entities = engine::evaluator::build_entities(&membership_tuples, &group_paths)?;
+    Ok(entities)
 }

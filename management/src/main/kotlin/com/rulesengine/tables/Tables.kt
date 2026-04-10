@@ -87,10 +87,10 @@ object PolicyVersionsTable : Table("policy_versions") {
     val id = uuid("id")
     val policyId = uuid("policy_id").references(PoliciesTable.id)
     val versionNumber = integer("version_number")
-    val constraints = text("constraints") // JSONB stored as text
+    val constraints = jsonb("constraints") // JSONB column
     val cedarSource = text("cedar_source")
-    // cedar_hash is GENERATED ALWAYS — read-only, never write to it
-    val cedarHash = text("cedar_hash")
+    // cedar_hash is GENERATED ALWAYS — read-only via raw SQL, excluded from Exposed inserts
+    val cedarHash = text("cedar_hash").databaseGenerated()
     val createdAt = timestampWithTimeZone("created_at")
     val createdBy = uuid("created_by").nullable()
 
@@ -113,7 +113,7 @@ object DecisionLogTable : Table("decision_log") {
     val evaluatedAt = timestampWithTimeZone("evaluated_at")
     val agentId = uuid("agent_id").references(AgentsTable.id)
     val actionTypeId = uuid("action_type_id").references(ActionTypesTable.id)
-    val requestContext = text("request_context") // JSONB stored as text
+    val requestContext = jsonb("request_context") // JSONB column
     val bundleHash = text("bundle_hash")
     val outcome = pgEnum("outcome", "decision_outcome", DecisionOutcome::fromDb, DecisionOutcome::dbValue)
     val reason = text("reason").nullable()

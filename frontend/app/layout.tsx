@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Header } from '@/components/layout/Header';
+import { AppShell } from '@/components/layout/AppShell';
 
 export const metadata: Metadata = {
   title: 'Governance Console — Rules Engine',
@@ -16,9 +17,9 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <Header />
-        <main className="app-main">
+        <AppShell>
           {children}
-        </main>
+        </AppShell>
       </body>
     </html>
   );

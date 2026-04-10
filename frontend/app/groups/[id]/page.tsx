@@ -31,13 +31,22 @@ export default function GroupDetailPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  // Load policies lazily when tab switches
+  const [policiesLoading, setPoliciesLoading] = useState(false);
+  const [policiesLoaded, setPoliciesLoaded] = useState(false);
+
+  // Load policies lazily when tab switches — use first member agent to resolve group hierarchy
   useEffect(() => {
-    if (tab === 'policies' && policies.length === 0 && members.length > 0) {
-      // Use first member's agent to get effective policies (group-level)
-      // For now, show policies if we have members
+    if (tab === 'policies' && !policiesLoaded && members.length > 0) {
+      setPoliciesLoading(true);
+      fetchEffectivePolicies(members[0].agentId)
+        .then(setPolicies)
+        .catch(() => setPolicies([]))
+        .finally(() => {
+          setPoliciesLoading(false);
+          setPoliciesLoaded(true);
+        });
     }
-  }, [tab, policies.length, members.length]);
+  }, [tab, policiesLoaded, members]);
 
   if (loading) {
     return <div style={{ display: 'flex', justifyContent: 'center', padding: 80 }}><div className="loading-spinner" /></div>;
@@ -73,7 +82,7 @@ export default function GroupDetailPage() {
           Members ({members.length})
         </button>
         <button className={`detail-tab ${tab === 'policies' ? 'active' : ''}`} onClick={() => setTab('policies')}>
-          Policies
+          Policies{policiesLoaded ? ` (${policies.length})` : ''}
         </button>
       </div>
 
@@ -106,11 +115,51 @@ export default function GroupDetailPage() {
       )}
 
       {tab === 'policies' && (
-        <div className="neu-panel" style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
-          <p>View effective policies by clicking into an agent member above.</p>
-          <p style={{ fontSize: 12, marginTop: 8 }}>
-            The envelope view on each agent shows all policies inherited through this group's hierarchy.
-          </p>
+        <div className="neu-panel">
+          {policiesLoading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><div className="loading-spinner" /></div>
+          ) : members.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: 40 }}>
+              Add members to this group to see effective policies.
+            </p>
+          ) : policies.length === 0 && policiesLoaded ? (
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: 40 }}>
+              No policies assigned to this group or its ancestors.
+            </p>
+          ) : (
+            <table className="rsop-table">
+              <thead>
+                <tr>
+                  <th>Policy</th>
+                  <th>Effect</th>
+                  <th>Domain</th>
+                  <th>Group Path</th>
+                  <th>Version</th>
+                  <th>Constraints</th>
+                </tr>
+              </thead>
+              <tbody>
+                {policies.map(p => (
+                  <tr key={p.policyId}>
+                    <td>
+                      <Link href={`/policies/${p.policyId}`} style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
+                        {p.policyName}
+                      </Link>
+                    </td>
+                    <td><span className={`badge badge-${p.effect}`}>{p.effect}</span></td>
+                    <td><span className={`badge badge-${p.domain}`}>{p.domain}</span></td>
+                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>
+                      {p.groupPath || '—'}
+                    </td>
+                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>v{p.versionNumber}</td>
+                    <td style={{ fontSize: 12, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {p.constraints === '[]' ? '—' : p.constraints}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
     </div>
