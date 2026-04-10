@@ -34,14 +34,24 @@ fun Table.jsonb(name: String): Column<String> =
 // Note: .databaseGenerated() is provided by Exposed 0.58+ (org.jetbrains.exposed.sql.Column).
 // It marks a column as database-generated, excluding it from INSERT/UPDATE but including in SELECT.
 
-// PostgreSQL native enum helper
+// PostgreSQL native enum helper — uses PGobject to set the correct JDBC type for native PG enums
 inline fun <reified T : Enum<T>> Table.pgEnum(
     name: String,
     enumTypeName: String,
     noinline fromDb: (String) -> T,
     noinline toDb: (T) -> String
 ): Column<T> {
-    return customEnumeration(name, enumTypeName, { fromDb(it as String) }, { toDb(it) })
+    return customEnumeration(
+        name,
+        sql = enumTypeName,
+        fromDb = { fromDb(it as String) },
+        toDb = { dbVal ->
+            org.postgresql.util.PGobject().apply {
+                type = enumTypeName
+                value = toDb(dbVal)
+            }
+        }
+    )
 }
 
 // Kotlin enum types matching the PostgreSQL enums.
